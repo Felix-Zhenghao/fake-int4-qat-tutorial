@@ -1,3 +1,4 @@
+import argparse
 import sys
 import torch
 
@@ -76,15 +77,34 @@ def test_backward():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Test INT4 QAT implementation")
+    parser.add_argument(
+        "--scale", action="store_true",
+        help="Only test compute_scales",
+    )
+    parser.add_argument(
+        "--all", action="store_true",
+        help="Run all tests (scales, forward, backward). This is the default.",
+    )
+    args = parser.parse_args()
+
+    # Default to --all when no flag is given
+    if not args.scale:
+        args.all = True
+
     print("=" * 50)
     print("INT4 QAT Implementation Tests")
     print("=" * 50)
     print()
 
     results = []
-    results.append(test_scales())
-    results.append(test_forward())
-    results.append(test_backward())
+
+    if args.scale or args.all:
+        results.append(test_scales())
+
+    if args.all:
+        results.append(test_forward())
+        results.append(test_backward())
 
     print()
     if all(results):
