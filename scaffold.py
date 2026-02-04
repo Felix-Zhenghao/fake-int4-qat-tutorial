@@ -6,7 +6,12 @@ def ceil_div(a, b):
 
 
 def _pad_and_reshape(x, group_size):
-    """Pad x and reshape into groups. Returns (x_view, x_padded, m, n)."""
+    """Pad x and reshape into groups. Returns (x_view, x_padded, m, n).
+
+    - x_view: reshaped tensor of shape (m_padded, 1, n_padded/group_size, group_size)
+    - x_padded: zero-padded tensor of shape (m_padded, n_padded)
+    - m, n: original dimensions of x
+    """
     m, n = x.shape
     block_size_m, block_size_n = 1, group_size
 
@@ -28,27 +33,6 @@ def _pad_and_reshape(x, group_size):
     return x_view, x_padded, m, n
 
 
-def compute_scales(x, group_size):
-    """
-    Compute per-group quantization scales.
-
-    Args:
-        x: Input tensor of shape (m, n)
-        group_size: Number of elements per quantization group
-
-    Returns:
-        Scale tensor of shape (m, 1, n_padded/group_size, 1)
-        where n_padded is n rounded up to the nearest multiple of group_size
-
-    Steps:
-        1. Pad and reshape x into groups using _pad_and_reshape
-        2. Find max absolute value per group (over dims 1 and 3)
-        3. Divide by q_max (7) and clamp to min 1e-5
-    """
-    # TODO: Implement scale computation
-    raise NotImplementedError("Implement scale computation")
-
-
 class _FakeInt4QuantizationSTE(torch.autograd.Function):
     """
     Straight-Through Estimator for INT4 quantization.
@@ -57,7 +41,6 @@ class _FakeInt4QuantizationSTE(torch.autograd.Function):
     Backward: Passes gradients unchanged (identity function)
 
     Your task: Implement the forward and backward methods below.
-    You can (and should) call compute_scales() in your forward pass.
     """
 
     @staticmethod
@@ -73,12 +56,14 @@ class _FakeInt4QuantizationSTE(torch.autograd.Function):
         Returns:
             Dequantized tensor of the same shape and dtype as x
 
+        Hint: Use _pad_and_reshape(x, group_size) and compute_scales(x, group_size).
+
         Steps:
-            1. Pad and reshape using _pad_and_reshape(x, group_size)
-            2. Compute per-group scale using compute_scales(x, group_size)
-            3. Quantize: divide by scale, round to nearest int, clamp to [-7, 7]
+            1. Call _pad_and_reshape(x, group_size) to get (x_view, x_padded, m, n)
+            2. Call compute_scales(x, group_size) to get per-group scales
+            3. Quantize: divide x_view by scale, round to nearest int, clamp to [-7, 7]
             4. Dequantize: multiply by scale
-            5. Remove padding and return with original dtype
+            5. Reshape back to x_padded shape, slice to (m, n), return with original dtype
         """
         # TODO: Implement the forward pass
         raise NotImplementedError("Implement the forward pass")
@@ -96,6 +81,25 @@ class _FakeInt4QuantizationSTE(torch.autograd.Function):
         """
         # TODO: Implement the backward pass
         raise NotImplementedError("Implement the backward pass")
+
+
+def compute_scales(x, group_size):
+    """
+    Compute per-group quantization scales.
+
+    Args:
+        x: Input tensor of shape (m, n)
+        group_size: Number of elements per quantization group
+
+    Returns:
+        Scale tensor of shape (m, 1, n_padded/group_size, 1)
+        where n_padded is n rounded up to the nearest multiple of group_size
+
+    Hint: Call _pad_and_reshape(x, group_size) to get x_view, then compute
+          scales from x_view using amax over dims (1, 3).
+    """
+    # TODO: Implement scale computation
+    raise NotImplementedError("Implement scale computation")
 
 
 def fake_int4_quantize(x, group_size):
